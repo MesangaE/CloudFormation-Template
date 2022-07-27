@@ -1,0 +1,256 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: this template creates vpc with private and public subnets
+
+#Metadata:
+  
+
+Parameters:
+  VPCCIDR:
+   Default: 10.0.0.0/16
+    Description: please enter the IP range for the VPC
+    Type: string
+
+
+  PublicSubnet1CIDR:
+   Default: 10.0.0.0/24
+    Description: please enter the IP range (CIDR notation) for the publicSubnet1
+    Type: string
+
+
+ PublicSubnet2CIDR:
+   Default: 10.0.1.0/24
+    Description: please enter the IP range (CIDR notation) for the publicSubnet2
+    Type: string
+
+
+  PrivateSubnet1CIDR:
+   Default: 10.0.2.0/24
+    Description: please enter the IP range (CIDR notation) for the PrivateSubnet1
+    type: string
+
+
+  PrivateSubnet2CIDR:
+   Default: 10.0.3.0/24
+    Description: please enter the IP range (CIDR notation) for the PrivateSubnet2
+    type: string
+
+  PrivateSubnet3CIDR:
+   Default: 10.0.4.0/24
+    Description: please enter the IP range (CIDR notation) for the PrivateSubnet3
+    type: string
+
+  PrivateSubnet4CIDR:
+   Default: 10.0.5.0/24
+    Description: please enter the IP range (CIDR notation) for the PrivateSubnet4
+
+
+SSHLocation:
+  AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,2})'
+  ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x
+  Default: 0.0.0.0/0
+  MaxLength: '18'
+  MinLength: '9'
+  Type: String
+
+Resources:
+
+  VPC:
+  Type: AWS::EC2::VPC
+  Properties:
+    CidrBlock: !Ref VPCCIDR
+    EnableDnsSupport: true
+    EnableDnsHostnames: true
+    InstanceTenancy: default
+    Tags:
+     - Key: Name
+       Value: Fine VPC
+
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: Fine IDW
+
+
+AttachGateway:
+  Type: AWS::EC2::VPCGatewayAttachment
+  Properties:
+    InternetGatewayId: !Ref InternetGateway
+    VpcId: !Ref VPC
+      
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PublicSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PublicSubnet1
+
+ PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PublicSubnet2
+
+  
+ PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  !Ref VPC
+      Tags:
+      - Key: Name
+        Value: Public Route Table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId: !Ref PublicRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId: !Ref InternetGateway
+
+
+ PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+      
+ PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+      
+      
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet1 | App Tier
+
+
+ PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet2 | App Tier
+
+ PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      AvailabilityZone: !Select [0, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet3 | DataBase Tier
+
+ PrivateSubnet4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+        Ref: myVPC
+      CidrBlock: !Ref PrivateSubnet4CIDR
+      AvailabilityZone: !Select [1, !GetAZs '' ]
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet4 | DataBase Tier
+
+ALBSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: Enable HTTP/HTTPS on port 80/443
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+     Tags:
+      - Key: Name
+        Value: ALB Security Group
+
+    VpcId: !Ref VPC
+
+
+SSHSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  DependsOn: VPC
+  Properties:
+    GroupDescription: SSH Security Group
+    VpcId: !Ref VPC
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Ref SSHLocation
+     Tags:
+      - Key: Name
+        Value: SSH Security Group
+
+WebServerSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  DependsOn: VPC
+  Properties:
+    GroupDescription: Enable HTTP/HTTPS via port 80/443 locked down to the load balancer
+    VpcId: !Ref VPC
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref ALBSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        SourceSecurityGroupId: !Ref ALBSecurityGroup
+     - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+     SourceSecurityGroupId: !Ref SSHSecurityGroup
+      Tags:
+      - Key: Name
+        Value: WebServer Security Group
+
+DatabaseSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: Open database for access
+    VpcId: !Ref VPC
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+      SourceSecurityGroupId: !Ref WebServerSecurityGroup
+    Tags:
+      - Key: Name
+        Value: DataBase Security Group
+      
+#Outputs
+
+ 
